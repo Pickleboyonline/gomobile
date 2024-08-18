@@ -94,7 +94,7 @@ jbyteArray go_seq_to_java_bytearray(JNIEnv *env, nbyteslice s, int copy) {
 }
 
 jobjectArray go_seq_to_java_objectarray(JNIEnv *env, nrefnumslice arr) {
-	if (arr.ptr == NULL) {
+	if (arr.ref_numbers == NULL) {
 		return NULL;
 	}
 	jobjectArray res = (*env)->NewObjectArray(env, arr.len, (*env)->FindClass(env, "java/lang/Object"), NULL);
@@ -102,7 +102,8 @@ jobjectArray go_seq_to_java_objectarray(JNIEnv *env, nrefnumslice arr) {
 		LOG_FATAL("NewObjectArray failed");
 	}
 	for (int i = 0; i < arr.len; i++) {
-		(*env)->SetObjectArrayElement(env, res, i, go_seq_from_refnum(env, arr.ptr[i]));
+		// TODO: Need to understand how to get the refnum from nrefnumslice
+		(*env)->SetObjectArrayElement(env, res, i, go_seq_from_refnum(env, arr.ref_numbers[i], NULL, NULL));
 	}
 	return res;
 }
@@ -252,7 +253,7 @@ nrefnumslice go_seq_from_java_objectarray(JNIEnv *env, jobjectArray arr) {
 	if (ptr == NULL) {
 		LOG_FATAL("GetPrimitiveArrayCritical failed");
 	}
-	void *refnums = (void *)malloc(len * sizeof(jint));
+	int32_t *refnums = (int32_t *)malloc(len * sizeof(jint));
 	if (refnums == NULL) {
 		LOG_FATAL("malloc failed");
 	}
@@ -260,7 +261,7 @@ nrefnumslice go_seq_from_java_objectarray(JNIEnv *env, jobjectArray arr) {
 	for (int i = 0; i < len; i++) {
 		refnums[i] = go_seq_to_refnum(env, (*env)->GetObjectArrayElement(env, arr, i));
 	}
-	res.ptr = refnums;
+	res.ref_numbers = refnums;
 	res.len = len;
 	(*env)->ReleasePrimitiveArrayCritical(env, arr, ptr, JNI_ABORT);
 	return res;
